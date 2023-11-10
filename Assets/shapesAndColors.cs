@@ -57,13 +57,13 @@ public class shapesAndColors : MonoBehaviour {
 		textClues = gen.GeneratePuzzle().Shuffle();
 		solution = gen.getSolution();
 		clueCursor = 0;
-		Debug.LogFormat("[Shapes and Colors #{0}] Solution:", moduleId);
+		Debug.LogFormat("[Advanced Shapes and Colors #{0}] Solution:", moduleId);
 		for (int i = 0; i < solution.Length; i++)
-			Debug.LogFormat("[Shapes and Colors #{0}] {1} {2} {3}", moduleId, solution[i][0], solution[i][1], solution[i][2]);
+			Debug.LogFormat("[Advanced Shapes and Colors #{0}] {1} {2} {3}", moduleId, solution[i][0], solution[i][1], solution[i][2]);
 		for (int i = 0; i < textClues.Count; i++)
 		{
 			string[][] clue = textClues[i].getClue();
-			Debug.LogFormat("[Shapes and Colors #{0}] {1} Clue #{2}:", moduleId, textClues[i].isPositive() ? "Positive" : "Negative", (i + 1));			
+			Debug.LogFormat("[Advanced Shapes and Colors #{0}] {1} Clue #{2}:", moduleId, textClues[i].isPositive() ? "Positive" : "Negative", (i + 1));			
 			for (int row = 0; row < 3; row++)
 			{
 				string output;
@@ -80,7 +80,7 @@ public class shapesAndColors : MonoBehaviour {
 							output = output + " " + clue[row][col];
 					}
 				}
-				Debug.LogFormat("[Shapes and Colors #{0}] {1}", moduleId, output);
+				Debug.LogFormat("[Advanced Shapes and Colors #{0}] {1}", moduleId, output);
 			}
 		}
 		clues = new List<Material[]>();

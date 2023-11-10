@@ -9,12 +9,17 @@ public class PuzzleGenerator {
     private readonly string numbers = "CTD";
     private bool needUpdate = false;
     private string[][] sol;
+
+    //private bool loop;
     // Returns an list of randomly generated clues
     public List<Clue> GeneratePuzzle()
     {
+        looper:
         string[][] solution = getInitialSolution();
         sol = solution;
+        //loop = true;
         tryagain:
+        
         List<int> positions = getShuffledPositions();
         List<List<List<string>>> possible = getInitialPossible();
         List<string[][]> clues = new List<string[][]>();
@@ -65,21 +70,42 @@ public class PuzzleGenerator {
             }
         }
         combineClues(clues, solution);  // Gen 4
+        combineNegativeClues(negativeClues); // Gen 4
         removeRedundantClues(clues, negativeClues);    // Gen 5
         removeRedundantClueElements(clues, negativeClues); // Gen 5
+        removeRedundantClues(clues, negativeClues);    // Gen 5
         removeRedundantSpaces(clues, negativeClues);   // Gen 6
+        removeRedundantClues(clues, negativeClues);    // Gen 5
         while (needUpdate)
         {
             needUpdate = false;
             combineClues(clues, solution);  // Gen 4
+            combineNegativeClues(negativeClues); // Gen 4
             removeRedundantClues(clues, negativeClues);    // Gen 5
             removeRedundantClueElements(clues, negativeClues); // Gen 5
+            removeRedundantClues(clues, negativeClues);    // Gen 5
             removeRedundantSpaces(clues, negativeClues);   // Gen 6
+            removeRedundantClues(clues, negativeClues);    // Gen 5
         }
-        
-        if (negativeClues.Count == 0)
+        bool retry = true;
+        foreach(string[][] clue in negativeClues)
+        {
+            if (clue.Length < 3 || clue[0].Length < 3)
+            {
+                List<int[]> elementPositions = getElementPositions(clue);
+                if(elementPositions.Count > 1)
+                {
+                    retry = false;
+                    break;
+                }
+            }
+        }
+        if (retry || !canSolve(clues, negativeClues))
             goto tryagain;
-            
+
+        //if (loop)
+        //   goto looper;
+
         for (int i = 0; i < clues.Count; i++)
             clues[i] = shrinkClue(clues[i]);
         turnSpacesBlack(clues);         // Gen 7
@@ -595,6 +621,67 @@ public class PuzzleGenerator {
         }
         return true;
     }
+    private void combineNegativeClues(List<string[][]> clues)
+    {
+        clues.Shuffle();
+        for (int i = 0; i < clues.Count; i++)
+        {
+            for (int j = i + 1; j < clues.Count; j++)
+            {
+                if (canCombineNegatives(clues[i], clues[j]))
+                {
+                    for (int row = 0; row < clues[i].Length; row++)
+                    {
+                        for (int col = 0; col < clues[i][row].Length; col++)
+                        {
+                            if (!clues[i][row][col].Equals("WW") && clues[i][row][col][0] != '-' && !clues[i][row][col].Equals(clues[j][row][col]))
+                            {
+                                int type = getType(clues[i][row][col]);
+                                if (type == 0)
+                                    clues[i][row][col] = "-" + letters.Replace(clues[i][row][col], "").Replace(clues[j][row][col], "");
+                                else
+                                    clues[i][row][col] = "-" + numbers.Replace(clues[i][row][col], "").Replace(clues[j][row][col], "");
+                            }
+                        }
+                    }
+                    clues.RemoveAt(j--);
+                    needUpdate = true;
+                    //loop = false;
+                }
+            }
+        }
+    }
+    // Checks if the 2 negative clues can combine into 1 negative clue
+    private bool canCombineNegatives(string[][] c1, string[][] c2)
+    {
+        if(c1.Length == c2.Length && c1[0].Length == c2[0].Length)
+        {
+            for (int i = 0; i < c1.Length; i++)
+            {
+                for (int j = 0; j < c1[i].Length; j++)
+                {
+                    if (c1[i][j].Equals("WW") && !c2[i][j].Equals("WW"))
+                        return false;
+                    if (!c1[i][j].Equals("WW") && c1[i][j].Equals("WW"))
+                        return false;
+                    if (!c1[i][j].Equals("WW") && !c1[i][j].Equals("WW"))
+                    {
+                        if (c1[i][j][0] == '-' && c2[i][j][0] != '-')
+                            return false;
+                        if (c1[i][j][0] != '-' && c2[i][j][0] == '-')
+                            return false;
+                        if(c1[i][j][0] != '-' && c2[i][j][0] != '-')
+                        {
+                            if (getType(c1[i][j]) != getType(c2[i][j]))
+                                return false;
+                        }
+                    }
+                }
+            }
+            return true;
+        }
+        return false;
+    }
     // Removes any clues that are not needed for the Puzzle
     private void removeRedundantClues(List<string[][]> clues, List<string[][]> negativeClues)
     {
@@ -765,7 +852,11 @@ public class PuzzleGenerator {
                             clues[i][k][minArea[types[j]]] = "KK";
                     }
                     if (!(canSolve(clues, negativeClues)))
+                    {
+                        Debug.LogFormat("WAS UNABLE TO SHRINK");
+                        printClue(clues[i]);
                         clues[i] = temp;
+                    }
                     else
                     {
                         needUpdate = true;
@@ -941,10 +1032,14 @@ public class PuzzleGenerator {
         List<string> clueElements = new List<string>();
         clueElements.Add(solution[row][col][0] + "");
         clueElements.Add(solution[row][col][1] + "");
+        //Placing a negative on a negative makes it a positive clue
+        //While I'm not against it, someone suggest that I would remove this part
+        /*
         string negatives = letters + numbers;
         negatives = negatives.Replace(solution[row][col][0] + "", "").Replace(solution[row][col][1] + "", "");
         foreach (char negative in negatives)
             clueElements.Add("-" + negative);
+        */
         clueElements.Shuffle();
         clueElements.Add(solution[row][col]);
         foreach (string clueElement in clueElements)
