@@ -14,12 +14,14 @@ public class PuzzleGenerator {
     // Returns an list of randomly generated clues
     public List<Clue> GeneratePuzzle()
     {
-        looper:
+        
+        
+        //looper:
         string[][] solution = getInitialSolution();
         sol = solution;
-        //loop = true;
-        tryagain:
         
+        tryagain:
+        //loop = true;
         List<int> positions = getShuffledPositions();
         List<List<List<string>>> possible = getInitialPossible();
         List<string[][]> clues = new List<string[][]>();
@@ -73,9 +75,8 @@ public class PuzzleGenerator {
         combineNegativeClues(negativeClues); // Gen 4
         removeRedundantClues(clues, negativeClues);    // Gen 5
         removeRedundantClueElements(clues, negativeClues); // Gen 5
-        removeRedundantClues(clues, negativeClues);    // Gen 5
+        removeEmptyClues(clues);    //Gen 8
         removeRedundantSpaces(clues, negativeClues);   // Gen 6
-        removeRedundantClues(clues, negativeClues);    // Gen 5
         while (needUpdate)
         {
             needUpdate = false;
@@ -83,14 +84,13 @@ public class PuzzleGenerator {
             combineNegativeClues(negativeClues); // Gen 4
             removeRedundantClues(clues, negativeClues);    // Gen 5
             removeRedundantClueElements(clues, negativeClues); // Gen 5
-            removeRedundantClues(clues, negativeClues);    // Gen 5
+            removeEmptyClues(clues);    //Gen 8
             removeRedundantSpaces(clues, negativeClues);   // Gen 6
-            removeRedundantClues(clues, negativeClues);    // Gen 5
         }
         bool retry = true;
         foreach(string[][] clue in negativeClues)
         {
-            if (clue.Length < 3 || clue[0].Length < 3)
+            if (clue.Length < 3 && clue[0].Length < 3)
             {
                 List<int[]> elementPositions = getElementPositions(clue);
                 if(elementPositions.Count > 1)
@@ -852,11 +852,7 @@ public class PuzzleGenerator {
                             clues[i][k][minArea[types[j]]] = "KK";
                     }
                     if (!(canSolve(clues, negativeClues)))
-                    {
-                        Debug.LogFormat("WAS UNABLE TO SHRINK");
-                        printClue(clues[i]);
                         clues[i] = temp;
-                    }
                     else
                     {
                         needUpdate = true;
@@ -1326,6 +1322,16 @@ public class PuzzleGenerator {
             }
         }
         return flag;
+    }
+    // Removes clues that contain 0 clue elements
+    private void removeEmptyClues(List<string[][]> clues)
+    {
+        for(int i = 0; i < clues.Count; i++)
+        {
+            List<int[]> ep = getElementPositions(clues[i]);
+            if (ep.Count == 0)
+                clues.RemoveAt(i--);
+        }
     }
     // Copies the array
     private string[][] copyArray(string[][] arr)
