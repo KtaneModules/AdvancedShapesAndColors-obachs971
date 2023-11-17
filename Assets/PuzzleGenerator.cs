@@ -12,14 +12,11 @@ public class PuzzleGenerator {
 
     //private bool loop;
     // Returns an list of randomly generated clues
-    public List<Clue> GeneratePuzzle()
+    public List<Clue> GeneratePuzzle(bool INHIBITOR_STATUS)
     {
-        
-        
         //looper:
         string[][] solution = getInitialSolution();
         sol = solution;
-        
         tryagain:
         //loop = true;
         List<int> positions = getShuffledPositions();
@@ -56,36 +53,41 @@ public class PuzzleGenerator {
                 foreach (string[][] negativeClue in negativeClues)
                     removePossibleCombinationsNegative(possible, negativeClue); // Gen 2
                 removePossibleCombinations(possible);   // Gen 2
-                //TODO: Print the possible combinations w/ the clue being generated at the time
-                /*
-                foreach(List<List<string>> poss in possible)
-                {
-                    foreach(List<string> p in poss)
-                    {
-                        string str = "";
-                        foreach (string s in p)
-                            str += s + " ";
-                        Debug.LogFormat("{0}", str);
-                    }
-                }
-                */
             }
         }
-        combineClues(clues, solution);  // Gen 4
-        combineNegativeClues(negativeClues); // Gen 4
         removeRedundantClues(clues, negativeClues);    // Gen 5
         removeRedundantClueElements(clues, negativeClues); // Gen 5
         removeEmptyClues(clues);    //Gen 8
         removeRedundantSpaces(clues, negativeClues);   // Gen 6
-        while (needUpdate)
+        bool convertedClue = negativesToPositives(clues, negativeClues, solution);
+        while(convertedClue)
         {
-            needUpdate = false;
-            combineClues(clues, solution);  // Gen 4
-            combineNegativeClues(negativeClues); // Gen 4
             removeRedundantClues(clues, negativeClues);    // Gen 5
             removeRedundantClueElements(clues, negativeClues); // Gen 5
             removeEmptyClues(clues);    //Gen 8
             removeRedundantSpaces(clues, negativeClues);   // Gen 6
+            convertedClue = negativesToPositives(clues, negativeClues, solution);
+        }
+        combineClues(clues, solution);  // Gen 4
+        combineNegativeClues(negativeClues); // Gen 4
+        while (needUpdate)
+        {
+            needUpdate = false;
+            removeRedundantClues(clues, negativeClues);    // Gen 5
+            removeRedundantClueElements(clues, negativeClues); // Gen 5
+            removeEmptyClues(clues);    //Gen 8
+            removeRedundantSpaces(clues, negativeClues);   // Gen 6
+            convertedClue = negativesToPositives(clues, negativeClues, solution);
+            while (convertedClue)
+            {
+                removeRedundantClues(clues, negativeClues);    // Gen 5
+                removeRedundantClueElements(clues, negativeClues); // Gen 5
+                removeEmptyClues(clues);    //Gen 8
+                removeRedundantSpaces(clues, negativeClues);   // Gen 6
+                convertedClue = negativesToPositives(clues, negativeClues, solution);
+            }
+            combineClues(clues, solution);  // Gen 4
+            combineNegativeClues(negativeClues); // Gen 4
         }
         bool retry = true;
         foreach(string[][] clue in negativeClues)
@@ -100,11 +102,12 @@ public class PuzzleGenerator {
                 }
             }
         }
-        if (retry || !canSolve(clues, negativeClues))
+        if (retry)
             goto tryagain;
 
-        //if (loop)
-        //   goto looper;
+        if (INHIBITOR_STATUS && !canSolve(clues, negativeClues))
+            goto tryagain;
+        
 
         for (int i = 0; i < clues.Count; i++)
             clues[i] = shrinkClue(clues[i]);
@@ -276,7 +279,7 @@ public class PuzzleGenerator {
                     if (dict.ContainsKey(temp))
                         dict[temp]++;
                     else
-                        dict.Add(temp, 1);   
+                        dict.Add(temp, 1);
                 }
             }
             flag = false;
@@ -297,12 +300,181 @@ public class PuzzleGenerator {
                                         flag = true;
                                 }
                             }
-
                         }
                     }
                 }
             }
+            dict = getComboOcc(possible);
+            int max = getMaxOcc(dict);
+            for(int i = 1; i <= max; i++)
+            {
+                List<string> combos = new List<string>();
+                foreach (string str in dict.Keys)
+                {
+                    if (dict[str] == i)
+                        combos.Add(str);
+                }
+                for(int row = 0; row < gridSize; row++)
+                {
+                    for(int col = 0; col < gridSize; col++)
+                    {
+                        List<string> reduce = new List<string>();
+                        foreach (string combo in combos)
+                        {
+                            if (possible[row][col].Contains(combo))
+                                reduce.Add(combo);
+                        }
+                        if (reduce.Count == i && getComboCount(possible, reduce) == i)
+                        {
+                            for(int index = 0; index < possible[row][col].Count; index++)
+                            {
+                                if (!reduce.Contains(possible[row][col][index]))
+                                {
+                                    possible[row][col].RemoveAt(index);
+                                    flag = true;
+                                    index--;
+                                }
+                            }
+                        }
+                    }
+                }
+                dict = getComboOcc(possible);
+                max = getMaxOcc(dict);
+            }
         }
+    }
+    // Removes possible combinations that have been reduced down to 1 spot on the grid
+    private void removePossibleCombinationsTest(List<List<List<string>>> possible)
+    {
+        bool flag = true;
+        while (flag)
+        {
+            Dictionary<string, int> dict = new Dictionary<string, int>();
+            for (int row = 0; row < possible.Count; row++)
+            {
+                for (int col = 0; col < possible[row].Count; col++)
+                {
+                    string temp = string.Join(" ", possible[row][col].ToArray());
+                    if (dict.ContainsKey(temp))
+                        dict[temp]++;
+                    else
+                        dict.Add(temp, 1);
+                }
+            }
+            flag = false;
+            foreach (string str in dict.Keys)
+            {
+                string[] list = str.Split(' ');
+                if (list.Length == dict[str])
+                {
+                    for (int i = 0; i < gridSize; i++)
+                    {
+                        for (int j = 0; j < gridSize; j++)
+                        {
+                            if (!(list.SequenceEqual(possible[i][j].ToArray())))
+                            {
+                                for (int k = 0; k < list.Length; k++)
+                                {
+                                    if (possible[i][j].Remove(list[k]))
+                                        flag = true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            dict = getComboOcc(possible);
+            int max = getMaxOcc(dict);
+            for (int i = 1; i <= max; i++)
+            {
+                List<string> combos = new List<string>();
+                foreach (string str in dict.Keys)
+                {
+                    if (dict[str] == i)
+                        combos.Add(str);
+                }
+                // ARRRGH THIS IS SO COMPLICATED
+                for (int row = 0; row < gridSize; row++)
+                {
+                    for (int col = 0; col < gridSize; col++)
+                    {
+                        List<string> reduce = new List<string>();
+                        foreach (string combo in combos)
+                        {
+                            if (possible[row][col].Contains(combo))
+                                reduce.Add(combo);
+                        }
+                        if (reduce.Count == i && getComboCount(possible, reduce) == i)
+                        {
+                            string str = "";
+                            foreach (string combo in reduce)
+                                str += combo + " ";
+                            //Debug.LogFormat("Reduce Combos: {0}", str);
+                            str = "";
+                            foreach(string combo in possible[row][col])
+                                str += combo + " ";
+                            //Debug.LogFormat("Poss List: {0}", str);
+                            for (int index = 0; index < possible[row][col].Count; index++)
+                            {
+                                if (!reduce.Contains(possible[row][col][index]))
+                                {
+                                    possible[row][col].RemoveAt(index);
+                                    flag = true;
+                                    index--;
+                                }
+                            }
+                        }
+                    }
+                }
+                dict = getComboOcc(possible);
+                max = getMaxOcc(dict);
+            }
+        }
+    }
+    private int getComboCount(List<List<List<string>>> possible, List<string> combos)
+    {
+        int sum = 0;
+        foreach(List<List<string>> row in possible)
+        {
+            foreach(List<string> col in row)
+            {
+                bool flag = true;
+                foreach (string combo in combos)
+                    flag = flag && col.Contains(combo);
+                if (flag)
+                    sum++;
+            }
+        }
+        return sum;
+    }
+    private Dictionary<string, int> getComboOcc(List<List<List<string>>> possible)
+    {
+        Dictionary<string, int> dict = new Dictionary<string, int>();
+        foreach (char l in letters)
+        {
+            foreach (char n in numbers)
+                dict.Add(l + "" + n, 0);
+        }
+        foreach (List<List<string>> row in possible)
+        {
+            foreach (List<string> col in row)
+            {
+                foreach (string combo in col)
+                    dict[combo]++;
+            }
+        }
+        return dict;
+    }
+    private int getMaxOcc(Dictionary<string, int> dict)
+    {
+        int max = 0;
+        foreach (string str in dict.Keys)
+        {
+            if (dict[str] > max)
+                max = dict[str];
+        }
+        return max;
     }
     // Blacks out spaces on the clue based on what is filled around the clue
     private void blackOutSpaces(List<List<List<string>>> possible, string[][] clue, int row, int col)
@@ -639,14 +811,13 @@ public class PuzzleGenerator {
                                 int type = getType(clues[i][row][col]);
                                 if (type == 0)
                                     clues[i][row][col] = "-" + letters.Replace(clues[i][row][col], "").Replace(clues[j][row][col], "");
-                                else
+                                else if (type == 1)
                                     clues[i][row][col] = "-" + numbers.Replace(clues[i][row][col], "").Replace(clues[j][row][col], "");
                             }
                         }
                     }
                     clues.RemoveAt(j--);
                     needUpdate = true;
-                    //loop = false;
                 }
             }
         }
@@ -662,9 +833,9 @@ public class PuzzleGenerator {
                 {
                     if (c1[i][j].Equals("WW") && !c2[i][j].Equals("WW"))
                         return false;
-                    if (!c1[i][j].Equals("WW") && c1[i][j].Equals("WW"))
+                    if (!c1[i][j].Equals("WW") && c2[i][j].Equals("WW"))
                         return false;
-                    if (!c1[i][j].Equals("WW") && !c1[i][j].Equals("WW"))
+                    if (!c1[i][j].Equals("WW") && !c2[i][j].Equals("WW"))
                     {
                         if (c1[i][j][0] == '-' && c2[i][j][0] != '-')
                             return false;
@@ -672,9 +843,15 @@ public class PuzzleGenerator {
                             return false;
                         if(c1[i][j][0] != '-' && c2[i][j][0] != '-')
                         {
-                            if (getType(c1[i][j]) != getType(c2[i][j]))
-                                return false;
+                            if(!c1[i][j].Equals(c2[i][j]))
+                            {
+                                int t1 = getType(c1[i][j]), t2 = getType(c2[i][j]);
+                                if (t1 == 2 || t2 == 2 || t1 != t2)
+                                    return false;
+                            }
                         }
+                        else if (getType(c1[i][j].Substring(1)) != getType(c2[i][j].Substring(1)))
+                            return false;
                     }
                 }
             }
@@ -751,6 +928,67 @@ public class PuzzleGenerator {
         }
         return true;
     }
+    // Checks if the puzzle can be solved using the list of clues it is provided
+    private bool canTestSolve(List<string[][]> clues, List<string[][]> negativeClues)
+    {
+        List<List<List<string>>> possible = getInitialPossible();
+        List<string[][]> used = new List<string[][]>();
+        bool flag = true;
+        while (flag)
+        {
+            flag = false;
+            foreach (string[][] clue in clues)
+            {
+                if (!(used.Contains(clue)) && isDistinct(possible, clue))
+                {
+                    flag = true;
+                    used.Add(clue);
+                    removePossibleCombinations(possible, clue);
+                    removePossibleCombinationsTest(possible);
+                    printClue(clue);
+                    foreach (List<List<string>> poss in possible)
+                    {
+                        foreach (List<string> p in poss)
+                        {
+                            string str = "";
+                            foreach (string s in p)
+                                str += s + " ";
+                            Debug.LogFormat("{0}", str);
+                        }
+                    }
+                }
+            }
+            foreach (string[][] clue in negativeClues)
+            {
+                if (removePossibleCombinationsNegative(possible, clue))
+                {
+                    flag = true;
+                    removePossibleCombinationsTest(possible);
+                    printClue(clue);
+                    foreach (List<List<string>> poss in possible)
+                    {
+                        foreach (List<string> p in poss)
+                        {
+                            string str = "";
+                            foreach (string s in p)
+                                str += s + " ";
+                            Debug.LogFormat("{0}", str);
+                        }
+                    }
+                }
+            }
+            
+        }
+        foreach (List<List<string>> row in possible)
+        {
+            foreach (List<string> col in row)
+            {
+                if (col.Count > 1)
+                    return false;
+            }
+        }
+        return true;
+    }
     // Removes redundant Clue Elements from each clue
     private void removeRedundantClueElements(List<string[][]> clues, List<string[][]> negativeClues)
     {
@@ -801,6 +1039,37 @@ public class PuzzleGenerator {
                     needUpdate = true;
             }
         }
+    }
+    // Turns 3x3 negative clues into positive clues
+    private bool negativesToPositives(List<string[][]> clues, List<string[][]> negativeClues, string[][] solution)
+    {
+        bool updated = false;
+        for(int i = 0; i < negativeClues.Count; i++)
+        {
+            if(negativeClues[i].Length == gridSize && negativeClues[i][0].Length == gridSize)
+            {
+                string[][] temp = copyArray(negativeClues[i]);
+                negativeClues.RemoveAt(i);
+                List<int[]> elementPositions = getElementPositions(temp);
+                foreach(int[] p in elementPositions)
+                {
+                    string element = temp[p[0]][p[1]];
+                    if(element[0] == '-')
+                        temp[p[0]][p[1]] = solution[p[0]][p[1]][getType(element.Substring(1))] + "";
+                    else
+                    {
+                        foreach (char c in solution[p[0]][p[1]])
+                            element = element.Replace(c + "", "");
+                        if(element.Length > 0)
+                            temp[p[0]][p[1]] = "-" + element[Random.Range(0, element.Length)];
+                    }
+                }
+                clues.Add(temp);
+                i--;
+                updated = true;
+            }
+        }
+        return updated;
     }
     // Removes redundant spaces from each clue
     private void removeRedundantSpaces(List<string[][]> clues, List<string[][]> negativeClues)

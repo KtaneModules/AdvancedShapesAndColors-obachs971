@@ -6,6 +6,11 @@ using System.Text.RegularExpressions;
 using UnityEngine;
 
 public class shapesAndColors : MonoBehaviour {
+
+	//False - Creates puzzles that are both Insane as well as puzzles that can contain multiple solutions
+	//True - Creates puzzles that can be solved using the built-in solver
+	private bool INHIBITOR_STATUS = false;
+
 	public KMBombModule module;
 	public new KMAudio audio;
 	public KMSelectable ClueUp;
@@ -54,7 +59,7 @@ public class shapesAndColors : MonoBehaviour {
 		yield return new WaitForSeconds(0f);
 		submission = new string[][] { new string[] { "WW", "WW", "WW" }, new string[] { "WW", "WW", "WW" }, new string[] { "WW", "WW", "WW" } };
 		PuzzleGenerator gen = new PuzzleGenerator();
-		textClues = gen.GeneratePuzzle().Shuffle();
+		textClues = gen.GeneratePuzzle(INHIBITOR_STATUS).Shuffle();
 		solution = gen.getSolution();
 		clueCursor = 0;
 		Debug.LogFormat("[Advanced Shapes and Colors #{0}] Solution:", moduleId);
