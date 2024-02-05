@@ -9,7 +9,7 @@ public class shapesAndColors : MonoBehaviour {
 
 	//False - Creates puzzles that are both Insane as well as puzzles that can contain multiple solutions
 	//True - Creates puzzles that can be solved using the built-in solver
-	private bool INHIBITOR_STATUS = false;
+	private bool INHIBITOR_STATUS = true;
 
 	public KMBombModule module;
 	public new KMAudio audio;
