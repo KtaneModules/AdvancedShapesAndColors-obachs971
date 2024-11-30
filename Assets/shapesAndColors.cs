@@ -9,7 +9,7 @@ public class shapesAndColors : MonoBehaviour {
 
 	//False - Creates puzzles that are both Insane as well as puzzles that can contain multiple solutions
 	//True - Creates puzzles that can be solved using the built-in solver
-	private bool INHIBITOR_STATUS = true;
+	private bool INHIBITOR_STATUS = false;
 
 	public KMBombModule module;
 	public new KMAudio audio;
@@ -62,9 +62,6 @@ public class shapesAndColors : MonoBehaviour {
 		textClues = gen.GeneratePuzzle(INHIBITOR_STATUS).Shuffle();
 		solution = gen.getSolution();
 		clueCursor = 0;
-		Debug.LogFormat("[Advanced Shapes and Colors #{0}] Solution:", moduleId);
-		for (int i = 0; i < solution.Length; i++)
-			Debug.LogFormat("[Advanced Shapes and Colors #{0}] {1} {2} {3}", moduleId, solution[i][0], solution[i][1], solution[i][2]);
 		for (int i = 0; i < textClues.Count; i++)
 		{
 			string[][] clue = textClues[i].getClue();
@@ -88,6 +85,9 @@ public class shapesAndColors : MonoBehaviour {
 				Debug.LogFormat("[Advanced Shapes and Colors #{0}] {1}", moduleId, output);
 			}
 		}
+		Debug.LogFormat("[Advanced Shapes and Colors #{0}] Solution:", moduleId);
+		for (int i = 0; i < solution.Length; i++)
+			Debug.LogFormat("[Advanced Shapes and Colors #{0}] {1} {2} {3}", moduleId, solution[i][0], solution[i][1], solution[i][2]);
 		clues = new List<Material[]>();
 		moduleBackgrounds = new List<Material>();
 		foreach (Clue clueInfo in textClues)
@@ -224,6 +224,18 @@ public class shapesAndColors : MonoBehaviour {
 		colorCursor = -1;
 		shapeCursor = -1;
 		List<int> notFilled = new List<int>();
+		Debug.LogFormat("[Advanced Shapes and Colors #{0}] User Submission:", moduleId);
+		for (int i = 0; i < submission.Length; i++)
+		{
+			string submitLog = "";
+			for (int j = 0; j < submission[i].Length; j++)
+			{
+				if (submission[i][j].Contains("W"))
+					notFilled.Add(i * 3 + j);
+				submitLog = submitLog + "" + submission[i][j] + " ";
+			}
+			Debug.LogFormat("[Advanced Shapes and Colors #{0}] {1}", moduleId, submitLog);
+		}
 		for (int i = 0; i < submission.Length; i++)
 		{
 			string submitLog = "";
